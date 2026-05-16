@@ -27,9 +27,31 @@ Inspired by state-of-the-art architectures like **CatPred**, **UniKP**, and **ER
 ```text
 EKP_Prediction_Project/
 │
-├── data/                       # Dataset directory
-│   ├── processed/              # Preprocessed CSV data (kcat, km, ki)
-│   └── splits/                 # OOD train/valid/test split files based on sequence similarity
+datasets/
+datasets/
+├── processed/                                # Master dataset files
+│   ├── kcat_max_wt_singleSeqs_wpdbs.csv      # ~23k data points [cite: 280]
+│   ├── km_mean_wt_singleSeqs_wpdbs.csv       # ~41k data points [cite: 280]
+│   └── ki_mean_wt_singleSeqs_wpdbs.csv       # ~12k data points [cite: 280]
+├── splits/                                   # All split masks stored flat
+│   # --- Turnover Number (kcat) Splits ---
+│   ├── kcat-random_train.csv                 # In-distribution training set mask
+│   ├── kcat-random_val.csv                   # In-distribution validation set mask
+│   ├── kcat-random_test.csv                  # In-distribution test set mask
+│   ├── kcat-seq_test_sequence_99cluster.csv  # OOD test: max 99% identity to train [cite: 3655, 3680]
+│   ├── kcat-seq_test_sequence_80cluster.csv  # OOD test: max 80% identity to train [cite: 3680]
+│   ├── kcat-seq_test_sequence_60cluster.csv  # OOD test: max 60% identity to train [cite: 3680]
+│   ├── kcat-seq_test_sequence_40cluster.csv  # OOD test: max 40% identity to train [cite: 3680]
+│   # --- Michaelis Constant (Km) Splits ---
+│   ├── km-random_train.csv                   # In-distribution training set mask
+│   ├── km-random_val.csv                     # In-distribution validation set mask
+│   ├── km-random_test.csv                    # In-distribution test set mask
+│   ├── km-seq_test_sequence_99cluster.csv    # OOD test: max 99% identity to train [cite: 3680]
+│   ...
+│   # --- Inhibition Constant (Ki) Splits ---
+│   ├── ki-random_train.csv                   # In-distribution training set mask
+│   ├── ki-random_val.csv                     # In-distribution validation set mask
+│   └── ki-seq_test_sequence_40cluster.csv    # OOD test: max 40% identity to train [cite: 3680]
 │
 ├── notebooks/                  # Jupyter Notebooks for EDA and prototyping
 │   └── 01_data_exploration.ipynb
