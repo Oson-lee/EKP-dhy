@@ -1,0 +1,133 @@
+## Enzyme Kinetic Parameter Prediction Project
+
+### Introduction
+- **Background**: Predicting enzyme kinetic parameters is a central problem in enzyme engineering, metabolic modeling, and biocatalyst discovery. In practice, experimentally measuring turnover number ($k_{\text{cat}}$), Michaelis constant ($K_m$), and inhibition constant ($K_i$) is costly and slow. Recent studies such as **CatPred** and **ERBA** show that multimodal learning can combine protein language models, substrate encodings, and structural information to improve prediction accuracy and out-of-distribution generalization. These works build on curated benchmark datasets derived from **BRENDA** and **SABIO-RK**, and have made enzyme kinetics prediction a realistic machine learning project with publicly documented datasets, evaluation settings, and reproducible baselines.
+
+- **Learning Objectives**:
+  - Master the formulation of enzyme kinetics prediction as multimodal regression
+  - Understand how to integrate protein sequence, substrate chemistry, and structural context
+  - Learn how benchmark datasets are curated from biochemical databases
+  - Compare sequence-only, sequence-substrate, and structure-aware learning methods
+
+### Problem Statement
+- **Technical Description**: Develop machine learning methods to predict enzyme kinetic parameters for a given enzyme-substrate pair, with optional use of active-site or full-protein structural information.
+- **Mathematical Definition**:
+  - **Stage 1: Enzyme-Substrate Representation Learning**
+    - Input:
+      - Enzyme sequence: $S_e \in \Sigma^n$
+      - Substrate molecule: $S_m$
+      - Optional structure/context: $S_g$
+    - Encoded Outputs:
+      - $H_e \in \mathbb{R}^{n \times d}$: enzyme embedding
+      - $H_m \in \mathbb{R}^{m \times d}$: substrate embedding
+      - $H_g \in \mathbb{R}^{g \times d}$: geometry/structure embedding
+    - Learning Task: multimodal feature alignment and fusion
+    - Example Objective Function:
+      - $\min_{\theta} \mathcal{L}_{\text{repr}} = \mathcal{L}_{\text{align}} + \lambda_1 \mathcal{L}_{\text{fusion}}$
+
+  - **Stage 2: Kinetic Parameter Regression**
+    - Input: fused representation $z = f(H_e, H_m, H_g)$
+    - Output:
+      - $\hat{y} \in \mathbb{R}^3 = [\log_{10}(k_{\text{cat}}), \log_{10}(K_m), \log_{10}(K_i)]$
+      - or a single-endpoint regression target for one task
+    - Learning Task: regression with optional heteroscedastic uncertainty estimation
+    - Example Objective Function:
+      - $\min_{\phi} \mathcal{L}_{\text{pred}} = \mathcal{L}_{\text{reg}}(y, \hat{y}) + \lambda_2 \mathcal{L}_{\text{uncertainty}}$
+      - where $\mathcal{L}_{\text{reg}}$ can be MSE / MAE / Gaussian NLL
+- **Key Challenges**:
+  - Multi-source data integration across sequence, substrate, and structure
+  - Sparse and noisy experimental measurements
+  - Distribution shift across enzyme families and substrates
+  - Limited structural coverage for some proteins
+  - Fair benchmarking under sequence-disjoint or OOD splits
+- **Expected Outcomes**:
+  - A reproducible enzyme kinetics prediction pipeline
+  - Benchmark comparisons across sequence-only and multimodal models
+  - Insight into when structural information improves prediction
+  - A deployable inference workflow for prioritizing enzyme-substrate assays
+
+### Data Description
+- **Provided / Core Datasets**:
+  - **CatPred benchmark datasets**:
+    - $k_{\text{cat}}$: ~23k data points
+    - $K_m$: ~41k data points
+    - $K_i$: ~12k data points
+  - **ERBA main datasets**:
+    - Built on curated kinetic endpoint datasets derived from prior work and ultimately from **BRENDA** and **SABIO-RK**
+  - **OOD evaluation datasets**:
+    - EITLEM-based $k_{\text{cat}}$ and $K_m$ test sets for out-of-distribution evaluation
+- **Additional Data Sources**:
+  - **BRENDA** for experimentally measured enzyme kinetic records
+  - **SABIO-RK** for curated reaction kinetics entries
+  - **UniProt** for validated enzyme sequences and identifiers
+  - **PubChem / KEGG / RDKit-derived canonical SMILES** for substrate standardization
+  - **AlphaFold / ESMFold / OpenFold** structures for proteins lacking experimental structures
+- **Variables**:
+  - Enzyme amino acid sequence
+  - Substrate name / canonical SMILES / molecular graph
+  - Kinetic endpoint ($k_{\text{cat}}$, $K_m$, $K_i$)
+  - Enzyme class (EC number)
+  - Organism metadata
+  - Optional 3D structure / active-site pocket descriptors
+- **Sample Size**:
+  - Main benchmark scale is approximately `23k + 41k + 12k` labeled examples across the three endpoints
+  - OOD sets include tens of thousands of $k_{\text{cat}}$ and $K_m$ entries collected under stricter filtering
+- **Dataset Availability**: `https://github.com/maranasgroup/CatPred-DB`
+
+### Methodology
+- **Suggested Methods**:
+  - Protein language models (ESM2, ProtT5, Ankh) for sequence encoding
+  - Molecular graph neural networks / fingerprints for substrate encoding
+  - Structure-aware encoders for pocket geometry or residue graphs
+  - Cross-attention or staged multimodal fusion (sequence → substrate → structure)
+  - Uncertainty-aware regression heads (heteroscedastic Gaussian NLL)
+  - Multi-task learning across $k_{\text{cat}}$, $K_m$, and $K_i$
+- **Implementation Guidelines**:
+  - Use canonical train/validation/test splits when available
+  - Report sequence-identity-aware or OOD performance, not just random splits
+  - Compare at least three model settings:
+    - sequence-only
+    - sequence + substrate
+    - sequence + substrate + structure
+  - Document all preprocessing decisions:
+    - UniProt mapping
+    - SMILES canonicalization
+    - duplicate aggregation
+    - missing-structure handling
+  - Include uncertainty calibration or confidence ranking where possible
+
+### Evaluation
+- **Suggested Metrics**:
+  - Regression Performance:
+    - $R^2$
+    - Pearson correlation coefficient (PCC)
+    - Mean absolute error (MAE)
+    - Root mean squared error (RMSE)
+  - Robustness / Generalization:
+    - OOD performance on dissimilar enzymes
+    - Calibration under uncertainty estimates
+    - EC-class-wise breakdown
+- **Validation**:
+  - Fixed train/validation/test split evaluation
+  - Five-fold cross-validation if building a reduced teaching subset
+  - Independent OOD test set evaluation
+  - Ablation on structure usage and fusion order
+
+### Resources
+- **Papers**:
+  - [CatPred: a comprehensive framework for deep learning in vitro enzyme kinetic parameters](https://www.nature.com/articles/s41467-025-57215-9)
+  - [Multimodal Protein Language Models for Enzyme Kinetic Parameters: From Substrate Recognition to Conformational Adaptation (ERBA)](https://arxiv.org/abs/2603.12845)
+  - [UniKP: a unified framework for the prediction of enzyme kinetic parameters](https://www.nature.com/articles/s41467-023-44113-1)
+  - [Robust enzyme discovery and engineering with deep learning using CataPro](https://www.nature.com/articles/s41467-025-57839-x)
+- **Datasets / Code**:
+  - [CatPred dataset and code (OSTI record)](https://www.osti.gov/biblio/3015252)
+- **Tools**:
+  - PyTorch / PyTorch Geometric
+  - Hugging Face Transformers / ESM
+  - RDKit
+  - BioPython
+  - scikit-learn
+  - MMseqs2 / BLAST
+
+### Contact Information
+- Hongyu Duan (dhy.scut@outlook.com)
