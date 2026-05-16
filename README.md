@@ -94,3 +94,45 @@ python train.py
 ```
 python evaluate.py
 ```
+
+
+
+Remain to be done:
+
+```
+EKP_Prediction_Project/
+│
+├── datasets/
+│   ├── processed/                      # 存放 kcat, km, ki 的三种主数据表
+│   ├── splits/                         # 存放所有参数的 train/val/ood 划分掩码
+│   └── structures/                     # [新增] 满足要求3：3D结构数据
+│       ├── pdb_files/                  # 存放从 AlphaFold 下载的 .pdb 原始文件
+│       └── graphs/                     # 存放预处理好的 PyTorch Geometric 图数据 (.pt)
+│
+├── checkpoints/                        # [重构] 按模态和任务分类保存权重
+│   ├── baseline_seq_only/              # [新增] 满足要求1：单模态对比权重
+│   │   ├── kcat_seq_only.pt
+│   │   └── km_seq_only.pt
+│   ├── bimodal_seq_sub/                # 我们刚才跑通的双模态权重
+│   │   ├── kcat_bimodal.pt
+│   │   ├── km_bimodal.pt
+│   │   └── ki_bimodal.pt
+│   └── trimodal_seq_sub_struct/        # [新增] 满足要求3：三模态(含3D结构)权重
+│       └── kcat_trimodal.pt
+│
+├── src/                                # 核心驱动层
+│   ├── __init__.py
+│   ├── dataset.py                      # [待修改] 需增加读取 3D 图数据 (Graph) 的逻辑
+│   ├── encoders.py                     # [待修改] 增加 StructureEncoder (3D GNN 提取器)
+│   ├── models.py                       # [待修改] 增加 SequenceOnlyModel 和 TriModalModel
+│   ├── losses.py                       
+│   └── metrics.py                      
+│
+├── scripts_preprocess/                 # [新增] 数据预处理脚本
+│   └── build_3d_graphs.py              # 将 PDB 转化为氨基酸接触图 (Adjacency Matrix)
+│
+├── train.py                            # [重构] 满足要求2：全能训练调度器
+├── evaluate.py                         # [重构] 全能评估器
+└── README.md
+```
+
