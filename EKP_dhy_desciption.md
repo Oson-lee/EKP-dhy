@@ -1,5 +1,7 @@
 ## Enzyme Kinetic Parameter Prediction Project
 
+Project for my Introduction to Statistic Learning and Data Science course.
+
 ### Introduction
 - **Background**: Predicting enzyme kinetic parameters is a central problem in enzyme engineering, metabolic modeling, and biocatalyst discovery. In practice, experimentally measuring turnover number ($k_{\text{cat}}$), Michaelis constant ($K_m$), and inhibition constant ($K_i$) is costly and slow. Recent studies such as **CatPred** and **ERBA** show that multimodal learning can combine protein language models, substrate encodings, and structural information to improve prediction accuracy and out-of-distribution generalization. These works build on curated benchmark datasets derived from **BRENDA** and **SABIO-RK**, and have made enzyme kinetics prediction a realistic machine learning project with publicly documented datasets, evaluation settings, and reproducible baselines.
 
