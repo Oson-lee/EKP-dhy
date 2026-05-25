@@ -14,12 +14,23 @@ class EnzymeSubstrateDataset(Dataset):
         self.master_df = pd.read_csv(data_master_path)
         self.mask_df = pd.read_csv(split_mask_path)
         
-        # Merge tracking indices via UniProt keys to slice correct data clusters
-        self.df = pd.merge(self.master_df, self.mask_df, on='uniprot', how='inner').reset_index(drop=True)
+        # Determine overlapping columns to use as joint keys to prevent row explosion
+        join_keys = ['uniprot', 'sequence', 'reactant_smiles']
+        common_keys = [col for col in join_keys if col in self.master_df.columns and col in self.mask_df.columns]
         
-        self.sequences = self.df['sequence'].tolist()
-        self.smiles = self.df['reactant_smiles'].tolist()
-        self.pdb_paths = self.df['pdbpath'].tolist()
+        # FIX: Combine joint keys with clear suffixes to protect original master column names from getting '_x'
+        self.df = pd.merge(
+            self.master_df, 
+            self.mask_df, 
+            on=common_keys, 
+            how='inner',
+            suffixes=('', '_split')
+        ).reset_index(drop=True)
+        
+        # Convert all entries explicitly to string to avoid float (NaN) tokenization errors
+        self.sequences = [str(s) for s in self.df['sequence'].tolist()]
+        self.smiles = [str(s) if pd.notna(s) else "" for s in self.df['reactant_smiles'].tolist()]
+        self.pdb_paths = [str(p) if pd.notna(p) else "" for p in self.df['pdbpath'].tolist()]
         
         # Precise Target Extraction System: prioritizes aggregated endpoints over individual raw tokens
         priority_targets = ['log10kcat_max', 'log10km_mean', 'log10ki_mean']
