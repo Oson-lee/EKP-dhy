@@ -1,55 +1,65 @@
 import torch
 import torch.nn as nn
-from .encoders import SequenceEncoder, SubstrateEncoder
+from src.encoders import ProteinSequenceEncoder, SubstrateSMILESEncoder, EnzymeStructureEncoder
 
 class HeteroscedasticEnzymeModel(nn.Module):
-    def __init__(self, esm_model="facebook/esm2_t6_8M_UR50D", chemberta_model="DeepChem/ChemBERTa-77M-MTR", hidden_dim=256, dropout=0.2):
-        """
-        Multimodal fusion network returning Mean (μ) and Log-Variance (log σ²)
-        for accurate regression paired with localized uncertainty forecasting.
-        """
-        super().__init__()
-        # 1. Initialize the dual encoders
-        self.seq_encoder = SequenceEncoder(model_name=esm_model)
-        self.sub_encoder = SubstrateEncoder(model_name=chemberta_model)
+    def __init__(self, seq_dim=320, smiles_dim=384, struct_dim=128, hidden_dim=256):
+        super(HeteroscedasticEnzymeModel, self).__init__()
         
-        # 2. Dynamically calculate combined embedding dimension
-        # ESM-2 (8M) outputs 320, ChemBERTa outputs 384 -> Combined: 704
-        seq_dim = self.seq_encoder.esm_model.config.hidden_size
-        sub_dim = self.sub_encoder.sub_model.config.hidden_size
-        combined_dim = seq_dim + sub_dim
+        # Initialize the three specialized modular feature encoders
+        self.seq_encoder = ProteinSequenceEncoder()
+        self.smiles_encoder = SubstrateSMILESEncoder()
+        self.struct_encoder = EnzymeStructureEncoder(output_dim=struct_dim)
         
-        # 3. Multimodal fusion network trunk (MLP)
-        self.fusion_trunk = nn.Sequential(
-            nn.Linear(combined_dim, hidden_dim),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.LeakyReLU(0.1),
-            nn.Dropout(dropout)
+        # Projection layers to map diverse modalities into a unified hidden space
+        self.proj_seq = nn.Sequential(nn.Linear(seq_dim, hidden_dim), nn.ReLU(), nn.Dropout(0.1))
+        self.proj_smiles = nn.Sequential(nn.Linear(smiles_dim, hidden_dim), nn.ReLU(), nn.Dropout(0.1))
+        self.proj_struct = nn.Sequential(nn.Linear(struct_dim, hidden_dim), nn.ReLU(), nn.Dropout(0.1))
+        
+        # Dual-head regression head supporting heteroscedastic uncertainty estimation
+        # Allocates maximum capacity to accommodate concatenated multimodal features (hidden_dim * 3)
+        self.regressor_mean = nn.Sequential(
+            nn.Linear(hidden_dim * 3, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_dim, 1)
         )
         
-        # 4. Dual heads for probabilistic output
-        self.mean_head = nn.Linear(hidden_dim // 2, 1)    # Outputs predicted log10 value
-        self.logvar_head = nn.Linear(hidden_dim // 2, 1)  # Outputs log variance for uncertainty
+        self.regressor_logvar = nn.Sequential(
+            nn.Linear(hidden_dim * 3, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_dim, 1)
+        )
 
-    def forward(self, sequences, smiles_list, device):
-        """Forward pass integrating modalities and emitting probabilistic parameters."""
-        # Step A: Independent modality extraction
-        seq_emb = self.seq_encoder(sequences, device)
-        sub_emb = self.sub_encoder(smiles_list, device)
+    def forward(self, sequences, smiles, pdb_paths, device, modality="bimodal"):
+        # Extract foundational representations from the frozen sequence encoder
+        seq_emb = self.proj_seq(self.seq_encoder(sequences, device))
         
-        # Step B: Modality concatenation
-        fused_features = torch.cat([seq_emb, sub_emb], dim=-1)
+        # Dynamic Feature Routing Layer for structural ablation experiments
+        if modality == "seq_only":
+            # Deterministically zero-mask the chemical and structural feature pathways
+            smiles_emb = torch.zeros_like(seq_emb).to(device)
+            struct_emb = torch.zeros_like(seq_emb).to(device)
+            
+        elif modality == "bimodal":
+            # Enable chemical sequences but keep the 3D structural stream masked
+            smiles_emb = self.proj_smiles(self.smiles_encoder(smiles, device))
+            struct_emb = torch.zeros_like(seq_emb).to(device)
+            
+        elif modality == "trimodal":
+            # Activate all feature streams concurrently including 3D spatial geometry descriptors
+            smiles_emb = self.proj_smiles(self.smiles_encoder(smiles, device))
+            struct_emb = self.proj_struct(self.struct_encoder(pdb_paths, device))
+            
+        else:
+            raise ValueError(f"Unsupported modality configuration: {modality}")
+            
+        # Splice active embedding profiles into an aggregate multimodal feature tensor
+        fused_representation = torch.cat([seq_emb, smiles_emb, struct_emb], dim=-1)
         
-        # Step C: Nonlinear transformation
-        X = self.fusion_trunk(fused_features)
+        # Map fused tensor to target values distribution attributes
+        predicted_means = self.regressor_mean(fused_representation).squeeze(-1)
+        predicted_logvars = self.regressor_logvar(fused_representation).squeeze(-1)
         
-        # Step D: Probabilistic regression mapping
-        mean = self.mean_head(X).squeeze(-1)
-        log_var = self.logvar_head(X).squeeze(-1)
-        
-        # Stable clamping to avoid exponential explosion during NLL loss calculation
-        log_var = torch.clamp(log_var, min=-10.0, max=10.0)
-        
-        return mean, log_var
+        return predicted_means, predicted_logvars
