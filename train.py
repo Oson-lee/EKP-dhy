@@ -13,7 +13,7 @@ def main():
     # =========================================================================
     # 🎯 CENTRAL SWITCH PANEL (Toggle configurations across targets and scopes)
     # =========================================================================
-    TARGET_TASK = "km"       # Target Endpoint Matrix. Options: "kcat", "km", "ki"
+    TARGET_TASK = "ki"       # Target Endpoint Matrix. Options: "kcat", "km", "ki"
     MODEL_MODE  = "seq_only"    # Architecture Strategy. Options: "seq_only", "bimodal", "trimodal"
     # =========================================================================
     
