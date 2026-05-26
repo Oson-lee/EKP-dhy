@@ -1,0 +1,21 @@
+# Core Deep Learning Framework
+torch >= 2.0.0
+
+# Data Manipulation & Analysis
+pandas >= 2.0.0
+
+# Transformer Models & NLP Tools (ESM-2, ChemBERTa)
+transformers >= 4.38.0
+safetensors >= 0.4.0
+accelerate >= 0.28.0
+
+# Bioinformatics & Cheminformatics (Crucial for PDBs & SMILES)
+biopython >= 1.80
+rdkit >= 2023.03.1
+
+# Progress Bar Utilities
+tqdm >= 4.65.0
+
+# Evaluation Metrics & Science Statistics
+scikit-learn >= 1.2.0
+scipy >= 1.10.0
