@@ -15,10 +15,10 @@ class EnzymeSubstrateDataset(Dataset):
         self.mask_df = pd.read_csv(split_mask_path)
         
         # Determine overlapping columns to use as joint keys to prevent row explosion
-        join_keys = ['uniprot', 'sequence', 'reactant_smiles']
+        join_keys = ['uniprot', 'sequence', 'reactant_smiles', 'smiles', 'substrate_smiles']
         common_keys = [col for col in join_keys if col in self.master_df.columns and col in self.mask_df.columns]
         
-        # FIX: Combine joint keys with clear suffixes to protect original master column names from getting '_x'
+        # Combine joint keys with clear suffixes to protect original master column names
         self.df = pd.merge(
             self.master_df, 
             self.mask_df, 
@@ -27,13 +27,27 @@ class EnzymeSubstrateDataset(Dataset):
             suffixes=('', '_split')
         ).reset_index(drop=True)
         
-        # Convert all entries explicitly to string to avoid float (NaN) tokenization errors
+        # 1. Extract protein sequence securely
         self.sequences = [str(s) for s in self.df['sequence'].tolist()]
-        self.smiles = [str(s) if pd.notna(s) else "" for s in self.df['reactant_smiles'].tolist()]
-        self.pdb_paths = [str(p) if pd.notna(p) else "" for p in self.df['pdbpath'].tolist()]
         
-        # Precise Target Extraction System: prioritizes aggregated endpoints over individual raw tokens
-        priority_targets = ['log10kcat_max', 'log10km_mean', 'log10ki_mean']
+        # 2. Adaptive Substrate SMILES Extraction System: scans for all common naming conventions
+        smiles_candidates = ['reactant_smiles', 'smiles', 'substrate_smiles', 'SMILES']
+        matched_smiles = [c for c in smiles_candidates if c in self.df.columns]
+        if matched_smiles:
+            self.smiles = [str(s) if pd.notna(s) else "" for s in self.df[matched_smiles[0]].tolist()]
+        else:
+            self.smiles = [""] * len(self.df) # Safe fallback vector
+            
+        # 3. Adaptive 3D Structure Path Scanner
+        struct_candidates = ['pdbpath', 'pdb_path', 'pdbpath_split']
+        matched_struct = [c for c in struct_candidates if c in self.df.columns]
+        if matched_struct:
+            self.pdb_paths = [str(p) if pd.notna(p) else "" for p in self.df[matched_struct[0]].tolist()]
+        else:
+            self.pdb_paths = [""] * len(self.df)
+        
+        # 4. Precise Target Extraction System: prioritizes aggregated endpoints over individual raw tokens
+        priority_targets = ['log10kcat_max', 'log10km_mean', 'log10ki_mean', 'log10km_max', 'log10ki_max']
         matched_target = [c for c in priority_targets if c in self.df.columns]
         
         if matched_target:

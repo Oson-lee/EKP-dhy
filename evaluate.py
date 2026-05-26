@@ -11,7 +11,7 @@ def evaluate_pipeline():
     # 🎯 EVALUATION PANEL (Configure to match your target matrix cell)
     # =========================================================================
     TARGET_TASK = "kcat"       # Target choice. Options: "kcat", "km", "ki"
-    MODEL_MODE  = "bimodal"    # Modality profile. Options: "seq_only", "bimodal", "trimodal"
+    MODEL_MODE  = "seq_only"    # Modality profile. Options: "seq_only", "bimodal", "trimodal"
     # =========================================================================
 
     # Explicit routing map targeting high-order sequence-disjoint OOD files
