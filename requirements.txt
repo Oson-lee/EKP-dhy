@@ -19,3 +19,6 @@ tqdm >= 4.65.0
 # Evaluation Metrics & Science Statistics
 scikit-learn >= 1.2.0
 scipy >= 1.10.0
+
+# Visualization
+matplotlib >= 3.7.0
